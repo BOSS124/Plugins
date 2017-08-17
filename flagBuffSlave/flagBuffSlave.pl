@@ -10,8 +10,7 @@ use Utils qw(inRange distance);
 use AI;
 use Actor;
 use Commands;
-
-use Time::HiRes qw(time);
+use Skill;
 
 use constant {
 	PLUGIN_NAME => 'flagBuffSlave',
@@ -44,11 +43,16 @@ sub on_set_max_heal {
 }
 
 sub on_AI_pre {
-	if(AI::is('buffThisNewbie')) {
-		my $args = AI::args();
+	if(AI::is('buffThisNewbie') && main::timeOut(time, $timeout{ai_skill_use}{timeout})) {
+		my $args = AI::args;
+		
+		unless (@{$args->{skills}} > 0) {
+			AI::dequeue;
+			return;
+		}
+
 		my $playerID = $args->{playerID};
-		my $sprefix = $args->{skillprefix};
-		message "Skill prefix: ".$sprefix."\n";
+		my $sprefix = ${$args->{skills}}[0];
 		my $player = $playersList->getByID($playerID);
 
 		my %party_skill;
@@ -56,7 +60,7 @@ sub on_AI_pre {
 		$party_skill{owner} = $party_skill{skillObject}->getOwner;
 
 		unless(defined $player && inRange(distance($party_skill{owner}{pos_to}, $player->{pos}), $config{partySkillDistance} || "0..8")) {
-			AI::dequeue();
+			AI::dequeue;
 			return;
 		}
 
@@ -71,12 +75,12 @@ sub on_AI_pre {
 			$party_skill{targetID} = $playerID;
 			$party_skill{maxCastTime} = $config{$sprefix."_maxCastTime"};
 			$party_skill{minCastTime} = $config{$sprefix."_minCastTime"};
-			$party_skill{isSelfSkill} = $config{$sprefix."_isSelfSkill"};
 			$party_skill{prefix} = $sprefix;
 			$sprefix =~ /^partySkill_(\d+)$/;
-			$targetTimeout{$playerID}{$party_skill{ID}} = $1;
+			#$targetTimeout{$playerID}{$party_skill{ID}} = $1;
 
 			if (defined $party_skill{targetID}) {
+				message "Using Skill: ".$party_skill{ID}."\n";
 				ai_skillUse2(
 					$party_skill{skillObject},
 					$party_skill{lvl},
@@ -85,10 +89,8 @@ sub on_AI_pre {
 					$party_skill{targetActor},
 					$party_skill{prefix},
 				);
-				message "skilled\n";
 			}
-
-			AI::dequeue();
+			shift @{$args->{skills}};
 		}
 	}		
 }
@@ -98,27 +100,24 @@ sub on_packet_emoticon {
 	my ($playerID, $emoticonType) = (${$pargs}{ID}, ${$pargs}{type});
 
 	if($emoticonType == FLAG_EMOTICON) {
-		my @prefixes = ();
+		my %args;
+		my $ret;
+
+		$args{playerID} = $playerID;
+		$args{skills} = [];
 
 		for(my $i = 0; exists $config{"partySkill_$i"}; $i++) {
 			if($config{"partySkill_$i"} eq 'AL_HEAL') {
 				foreach (1..$max_heal) {
-					push @prefixes, "partySkill_$i";
+					push @{$args{skills}}, "partySkill_$i";
 				}
 			}
 			elsif(!$config{"partySkill_$i"."_isSelfSkill"}) {
-				push @prefixes, "partySkill_$i";
+				push @{$args{skills}}, "partySkill_$i";
 			}
 		}
 
-		for(my $i = $#prefixes; $i >= 0; $i--) {
-			my %args;
-			$args{playerID} = $playerID;
-			$args{skillprefix} = $prefixes[$i];
-
-			AI::queue('buffThisNewbie', \%args);
-			message "Queued: ".$args{skillprefix}."\n";
-		}
+		AI::queue('buffThisNewbie', \%args);
 	}
 }
 
