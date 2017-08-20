@@ -190,7 +190,7 @@ sub set_time_no_see {
 
 sub clear_player_info {
 	foreach my $key (keys %player_info) {
-		if((time - $player_info{$key}{last_buffed}) >= $time_no_see) {
+		if($player_info{$key}{last_buffed} > 0 && (time - $player_info{$key}{last_buffed}) >= $time_no_see) {
 			delete $player_info{$key};
 		}
 	}
