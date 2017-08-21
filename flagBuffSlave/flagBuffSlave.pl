@@ -18,7 +18,9 @@ use constant {
 	FLAG_EMOTICON => 51,
 	DEFAULT_MAX_HEAL => 1,
 	DEFAULT_REBUFF_INTERVAL => 60,
-	DEFAULT_TIME_NO_SEE => 600
+	DEFAULT_TIME_NO_SEE => 600,
+	STATE_IDLE => 1,
+	STATE_BUSY => 2
 };
 
 # Control structures
@@ -27,6 +29,7 @@ my $rebuff_interval;
 my $time_no_see;
 my @on_queue;
 my %player_info;
+my $state;
 #-------------------
 
 Plugins::register(
@@ -43,9 +46,9 @@ my $hooks = Plugins::addHooks(
 );
 
 my $cmd = Commands::register(
-	['set_max_heal', '', \&on_set_max_heal],
-	['set_rebuff_interval', '', \&on_set_rebuff_interval],
-	['set_time_no_see', '', \&on_set_time_no_see]
+	['set_max_heal', 'change set_max_heal value', \&on_set_max_heal],
+	['set_rebuff_interval', 'change rebuff interval value', \&on_set_rebuff_interval],
+	['set_time_no_see', 'change time_no_see value', \&on_set_time_no_see]
 );
 
 sub on_AI_pre {
@@ -54,9 +57,14 @@ sub on_AI_pre {
 	foreach my $player (@{$playersList->getItems}) {
 		if(exists $player_info{$player->{ID}} && !is_on_queue($player->{ID})) {
 			if((time - $player_info{$player->{ID}}{last_buffed}) >= $rebuff_interval) {
-				queue_player($player->{ID});
+				push @on_queue, $player->{ID};
 			}
 		}
+	}
+
+	if(@on_queue > 0 && $state == STATE_IDLE) {
+		queue_player(shift @on_queue);
+		$state = STATE_BUSY;
 	}
 
 	if(AI::is('buffThisNewbie') && main::timeOut(time, $timeout{ai_skill_use}{timeout})) {
@@ -67,7 +75,7 @@ sub on_AI_pre {
 		unless (@{$args->{skills}} > 0) {
 			$player_info{$playerID}{last_buffed} = time;
 			AI::dequeue;
-			remove_from_queue($playerID);
+			$state = STATE_IDLE;
 			return;
 		}
 
@@ -81,7 +89,6 @@ sub on_AI_pre {
 
 		unless(inRange(distance($party_skill{owner}{pos_to}, $player->{pos}), $config{partySkillDistance} || "0..8")) {
 			AI::dequeue;
-			remove_from_queue($playerID);
 			return;
 		}
 
@@ -224,15 +231,6 @@ sub is_on_queue {
 		return 1 if($id eq $_[0]);
 	}
 	return 0;
-}
-
-sub remove_from_queue {
-	for(my $i = 0; $i <= $#on_queue; $i++) {
-		if($on_queue[$i] eq $_[0]) {
-			undef $on_queue[$i];
-			last;
-		}
-	}
 }
 
 sub on_unload {
