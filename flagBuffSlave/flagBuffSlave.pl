@@ -239,6 +239,7 @@ sub on_unload {
 	undef $time_no_see;
 	undef @on_queue;
 	undef %player_info;
+	undef $state;
 	Plugins::delHooks($hooks);
 	Commands::unregister($cmd);
 }
