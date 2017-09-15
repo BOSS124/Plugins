@@ -86,41 +86,41 @@ sub on_AI_pre {
 		shift @{$args->{skills}} if($prefix eq "");
 		return;
 
-		my %party_skill;
-		$party_skill{skillObject} = Skill->new(auto => $config{$sprefix});
-		$party_skill{owner} = $party_skill{skillObject}->getOwner;
+		my %buff_skill;
+		$buff_skill{skillObject} = Skill->new(auto => $config{$sprefix});
+		$buff_skill{owner} = $buff_skill{skillObject}->getOwner;
 
 		return unless(defined $player);
 
-		unless(inRange(distance($party_skill{owner}{pos_to}, $player->{pos}), $config{partySkillDistance} || "0..8")) {
+		unless(inRange(distance($buff_skill{owner}{pos_to}, $player->{pos}), $config{flagBuffSkillDistance} || "0..8")) {
 			AI::dequeue;
 			return;
 		}
 
 		if(checkSelfCondition($sprefix)) {
-			$party_skill{ID} = $party_skill{skillObject}->getHandle;
-			$party_skill{lvl} = $config{$sprefix."_lvl"} || $char->getSkillLevel($party_skill{skillObject});
-			$party_skill{target} = $player->{name};
-			$party_skill{targetActor} = $player;
+			$buff_skill{ID} = $buff_skill{skillObject}->getHandle;
+			$buff_skill{lvl} = $config{$sprefix."_lvl"} || $char->getSkillLevel($buff_skill{skillObject});
+			$buff_skill{target} = $player->{name};
+			$buff_skill{targetActor} = $player;
 			my $pos = $player->position;
-			$party_skill{x} = $pos->{x};
-			$party_skill{y} = $pos->{y};
-			$party_skill{targetID} = $playerID;
-			$party_skill{maxCastTime} = $config{$sprefix."_maxCastTime"};
-			$party_skill{minCastTime} = $config{$sprefix."_minCastTime"};
-			$party_skill{prefix} = $sprefix;
-			message "SKILL: $party_skill{prefix}";
-			$sprefix =~ /^partySkill_(\d+)$/;
-			$targetTimeout{$playerID}{$party_skill{ID}} = $1;
+			$buff_skill{x} = $pos->{x};
+			$buff_skill{y} = $pos->{y};
+			$buff_skill{targetID} = $playerID;
+			$buff_skill{maxCastTime} = $config{$sprefix."_maxCastTime"};
+			$buff_skill{minCastTime} = $config{$sprefix."_minCastTime"};
+			$buff_skill{prefix} = $sprefix;
+			message "SKILL: $buff_skill{prefix}";
+			$sprefix =~ /^flagBuffSkill_(\d+)$/;
+			$targetTimeout{$playerID}{$buff_skill{ID}} = $1;
 
-			if (defined $party_skill{targetID}) {
+			if (defined $buff_skill{targetID}) {
 				ai_skillUse2(
-					$party_skill{skillObject},
-					$party_skill{lvl},
-					$party_skill{maxCastTime},
-					$party_skill{minCastTime},
-					$party_skill{targetActor},
-					$party_skill{prefix},
+					$buff_skill{skillObject},
+					$buff_skill{lvl},
+					$buff_skill{maxCastTime},
+					$buff_skill{minCastTime},
+					$buff_skill{targetActor},
+					$buff_skill{prefix},
 				);
 			}
 			shift @{$args->{skills}};
@@ -217,14 +217,14 @@ sub queue_player {
 	$args{playerID} = $_[0];
 	$args{skills} = [];
 
-	for(my $i = 0; exists $config{"partySkill_$i"}; $i++) {
-		if($config{"partySkill_$i"} eq 'AL_HEAL') {
+	for(my $i = 0; exists $config{"flagBuffSkill_$i"}; $i++) {
+		if($config{"flagBuffSkill_$i"} eq 'AL_HEAL') {
 			foreach (1..$max_heal) {
-				push @{$args{skills}}, "partySkill_$i";
+				push @{$args{skills}}, "flagBuffSkill_$i";
 			}
 		}
-		elsif(!$config{"partySkill_$i"."_isSelfSkill"} &&) {
-			push @{$args{skills}}, "partySkill_$i";
+		elsif(!$config{"flagBuffSkill_$i"."_isSelfSkill"} &&) {
+			push @{$args{skills}}, "flagBuffSkill_$i";
 		}
 	}
 
