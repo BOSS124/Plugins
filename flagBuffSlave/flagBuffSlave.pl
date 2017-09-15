@@ -72,14 +72,19 @@ sub on_AI_pre {
 		my $playerID = $args->{playerID};
 		my $player = $playersList->getByID($playerID);
 
-		unless (@{$args->{skills}} > 0) {
+		unless (scalar @{$args->{skills}} > 0) {
 			$player_info{$playerID}{last_buffed} = time;
 			AI::dequeue;
 			$state = STATE_IDLE;
 			return;
 		}
 
+		my $skillco = scalar @{$args->{skills}};
+		message "$skillco";
+
 		my $sprefix = ${$args->{skills}}[0];
+		shift @{$args->{skills}} if($prefix eq "");
+		return;
 
 		my %party_skill;
 		$party_skill{skillObject} = Skill->new(auto => $config{$sprefix});
@@ -104,11 +109,11 @@ sub on_AI_pre {
 			$party_skill{maxCastTime} = $config{$sprefix."_maxCastTime"};
 			$party_skill{minCastTime} = $config{$sprefix."_minCastTime"};
 			$party_skill{prefix} = $sprefix;
+			message "SKILL: $party_skill{prefix}";
 			$sprefix =~ /^partySkill_(\d+)$/;
 			$targetTimeout{$playerID}{$party_skill{ID}} = $1;
 
 			if (defined $party_skill{targetID}) {
-				message "Using Skill: ".$party_skill{ID}."\n";
 				ai_skillUse2(
 					$party_skill{skillObject},
 					$party_skill{lvl},
@@ -147,6 +152,8 @@ sub on_start3 {
 		$time_no_see = DEFAULT_TIME_NO_SEE;
 		message "[".PLUGIN_NAME."] Time No See set to: ".$time_no_see." seconds\n";
 	}
+
+	$state = STATE_IDLE;
 }
 
 sub on_packet_emoticon {
@@ -155,7 +162,6 @@ sub on_packet_emoticon {
 
 	if($emoticonType == FLAG_EMOTICON) {
 		$player_info{$playerID}{last_buffed} = 0 unless(exists $player_info{$playerID});
-		message "bandeira from ".$playerID."\n";
 	}
 }
 
@@ -217,13 +223,12 @@ sub queue_player {
 				push @{$args{skills}}, "partySkill_$i";
 			}
 		}
-		elsif(!$config{"partySkill_$i"."_isSelfSkill"}) {
+		elsif(!$config{"partySkill_$i"."_isSelfSkill"} &&) {
 			push @{$args{skills}}, "partySkill_$i";
 		}
 	}
 
 	AI::queue('buffThisNewbie', \%args);
-	push @on_queue, $args{playerID};
 }
 
 sub is_on_queue {
