@@ -75,6 +75,7 @@ sub on_AI_pre {
 		unless (scalar @{$args->{skills}} > 0) {
 			$player_info{$playerID}{last_buffed} = time;
 			AI::dequeue;
+			message "dequeued\n";
 			$state = STATE_IDLE;
 			return;
 		}
@@ -83,8 +84,6 @@ sub on_AI_pre {
 		message "$skillco";
 
 		my $sprefix = ${$args->{skills}}[0];
-		shift @{$args->{skills}} if($prefix eq "");
-		return;
 
 		my %buff_skill;
 		$buff_skill{skillObject} = Skill->new(auto => $config{$sprefix});
@@ -223,7 +222,7 @@ sub queue_player {
 				push @{$args{skills}}, "flagBuffSkill_$i";
 			}
 		}
-		elsif(!$config{"flagBuffSkill_$i"."_isSelfSkill"} &&) {
+		elsif($config{"flagBuffSkill_$i"} ne "" && !$config{"flagBuffSkill_$i"."_isSelfSkill"}) {
 			push @{$args{skills}}, "flagBuffSkill_$i";
 		}
 	}
